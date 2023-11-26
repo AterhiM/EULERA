@@ -42,7 +42,6 @@ conf_graph = {
 }
 
 
-
 def update_news(company):
     list_news = news.get_yf_rss(company)
     df = pd.DataFrame(list_news)[["title", "link"]]
@@ -122,10 +121,8 @@ def get_top_bar(company):
         get_top_bar_cell("Debt-to-equity", json_data["debtEquityRatioTTM"]),
         get_top_bar_cell("Gross Margin", json_data["grossProfitMarginTTM"]),
         get_top_bar_cell("Net Profit Margin", json_data["netProfitMarginTTM"]),
-        get_top_bar_cell("Inventory Turnover", json_data["inventoryTurnoverTTM"]
-        ),
+        get_top_bar_cell("Inventory Turnover", json_data["inventoryTurnoverTTM"]),
     ]
-
 
 
 def market_status():
@@ -269,7 +266,7 @@ def get_company_infos(company):
     info_dict = {
         "AAPL": info[0],
         "TSLA": info[1],
-        "FB":   info[2],
+        "FB": info[2],
         "AMZN": info[3],
         "GOOG": info[4],
         "TWTR": info[5],
@@ -326,9 +323,11 @@ def get_finance_infos(company):
             data_infos[e] = "--"
     if not isinstance(data_infos["earningsTimestampStart"], str):
         data_infos["earningsTimestampStart"] = datetime.fromtimestamp(
-            int(data_infos["earningsTimestampStart"])).strftime("%d %b %Y")
+            int(data_infos["earningsTimestampStart"])
+        ).strftime("%d %b %Y")
         data_infos["earningsTimestampEnd"] = datetime.fromtimestamp(
-            int(data_infos["earningsTimestampEnd"])).strftime("%d %b %Y")
+            int(data_infos["earningsTimestampEnd"])
+        ).strftime("%d %b %Y")
     return [
         html.Div(
             children=[
@@ -605,7 +604,6 @@ def get_recomm_rating(company):
         return html.P("feature not available", className="f-notav1")
 
 
-
 def get_pre_post_post(company):
     try:
         status = si.get_market_status()
@@ -617,11 +615,15 @@ def get_pre_post_post(company):
 
             div = soup.find("span", {"class": "C($primaryColor) Fz(24px) Fw(b)"})
             price = float(div.text.replace(",", ""))
-            prev = Ticker(company).history(period="1d", interval="1d", adj_timezone=False)
+            prev = Ticker(company).history(
+                period="1d", interval="1d", adj_timezone=False
+            )
             prev = prev.loc[company]
             prev = prev.iloc[-1].close
         else:
-            div = soup.find("span", {"class": "Trsdu(0.3s) Fw(b) Fz(36px) Mb(-4px) D(ib)"})
+            div = soup.find(
+                "span", {"class": "Trsdu(0.3s) Fw(b) Fz(36px) Mb(-4px) D(ib)"}
+            )
             price = float(div.text.replace(",", ""))
             prev = Ticker(company).quotes[company]["regularMarketPreviousClose"]
     except AttributeError:
@@ -725,7 +727,10 @@ app.layout = html.Div(
                                         ),
                                         html.Div(html.Span("|")),
                                         html.Div(
-                                            html.A("Source Code", href="https://github.com/s0v1x/EULERA"),
+                                            html.A(
+                                                "Source Code",
+                                                href="https://github.com/s0v1x/EULERA",
+                                            ),
                                             className="link",
                                         ),
                                     ],
@@ -1494,12 +1499,14 @@ model_history = pd.DataFrame(columns=["date", "min_conf", "max_conf", "f_price"]
     [Input("dropdown_corp", "value"), Input("modal_price", "is_open")],
 )
 def update_forecast(dropdown_corp, is_open):
-    df = pd.read_csv("hist.csv", index_col=0)
-    if is_open and dropdown_corp == "AAPL":
+    df = pd.read_csv("history.csv", index_col=0)
+    response = requests.post(
+            "http://euleraapi.herokuapp.com/predict",
+            headers={"Content-Type": "application/json"},
+            data=json.dumps(dict(ticker=dropdown_corp)),
+        )
 
-        response = requests.post('http://euleraapi.herokuapp.com/predict',
-                                headers={'Content-Type': 'application/json'},
-                                data=json.dumps(dict(ticker=dropdown_corp)))
+    if is_open and dropdown_corp == "AAPL" and response.status_code == 200:
 
         res = response.json()
         dd = datetime.strptime(df.index[-1], "%Y-%m-%d")
@@ -1508,23 +1515,24 @@ def update_forecast(dropdown_corp, is_open):
             data = (
                 td.strftime("%Y-%m-%d")
                 + ","
-                + str(res['CI']['min'])
+                + str(res["CI"]["min"])
                 + ","
-                + str(res['CI']['max'])
+                + str(res["CI"]["max"])
                 + ","
-                + str(res['forecast'])
+                + str(res["forecast"])
                 + "\n"
             )
             with open("hist.csv", "a") as f:
                 f.write(data)
 
         return [
-            indc_price(148.4, dropdown_corp),
+            indc_price(res["forecast"], dropdown_corp),
             model_chart(dropdown_corp, df),
             "",
             {},
         ]
     else:
+        df = pd.DataFrame(columns=['f_price', 'min_conf', 'max_conf'])
         return [
             indc_price(0, "AAPL"),
             model_chart("AAPL", df),
@@ -1549,10 +1557,12 @@ def update_modelt(n):
     ):
         status = si.get_market_status()
         if status == "POSTPOST" or status == "POST":
-            response = requests.post('http://euleraapi.herokuapp.com/update',
-                                headers={'Content-Type': 'application/json'},
-                                data=json.dumps(dict(ticker='AAPL')))
-            #print(dt,'\t',response.text, 'MODEL UPDATED \t AAPL')
+            response = requests.post(
+                "http://euleraapi.herokuapp.com/update",
+                headers={"Content-Type": "application/json"},
+                data=json.dumps(dict(ticker="AAPL")),
+            )
+            # print(dt,'\t',response.text, 'MODEL UPDATED \t AAPL')
     else:
         raise PreventUpdate
 
